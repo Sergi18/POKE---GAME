@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joc de Cartes Pokémon</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Template para clonar cartas -->
+    <template id="card-template">
+        <div class="pokemon-card">
+            <div class="card-inner">
+                <div class="card-back">
+                    <div class="pokeball"></div>
+                </div>
+                <div class="card-front">
+                    <div class="card-header">
+                        <h3 class="pokemon-name"></h3>
+                        <div class="pokemon-hp">HP: <span class="hp-value"></span></div>
+                    </div>
+                    <div class="card-image-container">
+                        <img src="/placeholder.svg" alt="" class="pokemon-image">
+                    </div>
+                    <div class="pokemon-types"></div>
+                    <div class="pokemon-stats">
+                        <div class="stat">
+                            <span class="stat-label">Atac</span>
+                            <span class="stat-value stat-attack"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Defensa</span>
+                            <span class="stat-value stat-defense"></span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Velocitat</span>
+                            <span class="stat-value stat-speed"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <main class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>Joc de Cartes Pokémon</h1>
+            <!-- Afegir descripcions de les modalitats -->
+            <div class="mode-descriptions">
+                <div class="mode-description" id="desc-turns">
+                    <strong>Lluita per torns:</strong> Dos Pokémon es combaten alternant-se els atacs fins que un es
+                    quedi sense vida.
+                </div>
+                <div class="mode-description hidden" id="desc-vsIA">
+                    <strong>Contra IA:</strong> Selecciones un Pokémon i la màquina en tria un altre automàticament per
+                    lluitar.
+                </div>
+                <div class="mode-description hidden" id="desc-team">
+                    <strong>Batalla d'equips:</strong> Cada jugador tria un equip de Pokémon. Lluiten en ordre i el
+                    guanyador continua lluitant amb HP restant contra el següent Pokémon rival fins que un jugador perdi
+                    tots els seus Pokémon.
+                </div>
+            </div>
+        </header>
+
+        <!-- Afegir selector de modalitat abans dels controls -->
+        <div class="game-mode-selector">
+            <button class="mode-btn active" data-mode="turns">Lluita per torns</button>
+            <button class="mode-btn" data-mode="vsIA">Contra IA</button>
+            <button class="mode-btn" data-mode="team">Batalla d'equips</button>
+        </div>
+
+        <!-- Controles -->
+        <div class="controls">
+            <div class="control-group">
+                <label for="pokemonCount">Pokémon per jugador:</label>
+                <input type="number" id="pokemonCount" value="5" min="1" max="15" class="input">
+            </div>
+            <button id="getPokemons" class="button">Obtenir Pokémons</button>
+        </div>
+
+        <!-- Filtro de búsqueda -->
+        <div class="filter-section">
+            <input type="text" id="filterInput" class="filter-input"
+                placeholder="Buscar Pokémon descoberts per nom o tipus...">
+        </div>
+
+        <!-- Afegir botons de gestió del marcador -->
+        <div class="score-controls">
+            <button id="resetScore" class="score-btn">Reiniciar marcador</button>
+            <button id="saveScore" class="score-btn">Guardar marcador</button>
+            <button id="loadScore" class="score-btn">Carregar marcador</button>
+        </div>
+
+        <!-- Información de batalla -->
+        <div id="battleInfo" class="battle-info hidden">
+            <h2>Combat en curs</h2>
+            <div class="battle-details">
+                <div class="battle-pokemon attacker">
+                    <div class="pokemon-avatar">
+                        <img id="attackerImg" src="/placeholder.svg" alt="">
+                    </div>
+                    <div class="pokemon-info">
+                        <span class="pokemon-label">Atacant</span>
+                        <span class="pokemon-name" id="attackerName"></span>
+                        <div class="hp-bar">
+                            <div class="hp-fill" id="attackerHpBar"></div>
+                        </div>
+                        <span class="hp-text" id="attackerHp"></span>
+                    </div>
+                    <span class="attack-value" id="attackerValue"></span>
+                </div>
+                <div class="vs-separator">
+                    <span>VS</span>
+                </div>
+                <div class="battle-pokemon defender">
+                    <span class="attack-value" id="defenderValue"></span>
+                    <div class="pokemon-info">
+                        <span class="pokemon-label">Defensor</span>
+                        <span class="pokemon-name" id="defenderName"></span>
+                        <div class="hp-bar">
+                            <div class="hp-fill" id="defenderHpBar"></div>
+                        </div>
+                        <span class="hp-text" id="defenderHp"></span>
+                    </div>
+                    <div class="pokemon-avatar">
+                        <img id="defenderImg" src="/placeholder.svg" alt="">
+                    </div>
+                </div>
+            </div>
+            <div class="turn-info">
+                <span id="turnNumber">Turn 1</span>
+            </div>
+        </div>
+
+        <!-- Resultado de batalla -->
+        <div id="battleResult" class="battle-result hidden"></div>
+
+        <!-- Marcador de puntuación -->
+        <div id="scoreBoard" class="score-board hidden">
+            <h3>Marcador</h3>
+            <div class="scores">
+                <div class="score-item first-player">
+                    <div class="score-info">
+                        <span class="score-label">Jugador 1</span>
+                        <span class="score-subtitle">Victòries</span>
+                    </div>
+                    <span id="firstWins" class="score-value">0</span>
+                </div>
+                <div class="score-item draws">
+                    <div class="score-info">
+                        <span class="score-label">Empats</span>
+                    </div>
+                    <span id="draws" class="score-value">0</span>
+                </div>
+                <div class="score-item second-player">
+                    <div class="score-info">
+                        <span class="score-label">Jugador 2</span>
+                        <span class="score-subtitle">Victòries</span>
+                    </div>
+                    <span id="secondWins" class="score-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pokemon Cards Container -->
+        <div id="cardsContainer" class="cards-grid"></div>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Carregant Pokémon...</p>
+        </div>
+
+        <!-- Afegir secció d'equips per modalitat team -->
+        <div id="teamBattle" class="team-battle-container hidden">
+            <div class="teams-display">
+                <div class="team player1-team">
+                    <h3>Equip Jugador 1</h3>
+                    <div id="player1Cards" class="team-cards"></div>
+                </div>
+                <div class="team player2-team">
+                    <h3>Equip Jugador 2</h3>
+                    <div id="player2Cards" class="team-cards"></div>
+                </div>
+            </div>
+            <button id="startTeamBattle" class="button hidden">Començar Batalla!</button>
+        </div>
+
+        <!-- Panel lateral d’historial (es mostra sempre) -->
+        <aside id="battleHistory" class="history-panel">
+            <h3>Historial de Batalla</h3>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                <button id="clearHistoryBtn" class="button" style="padding:6px 8px;font-size:0.85rem;">Netejar
+                    historial</button>
+                <div style="flex:1;font-size:0.85rem;color:#475569;text-align:right;">Mode:
+                    <strong id="historyModeLabel">turns</strong>
+                </div>
+            </div>
+            <div id="historyContent" class="history-content"></div>
+        </aside>
+    </main>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Afegir estils per les descripcions de modalitats */
+        .mode-descriptions {
+            max-width: 900px;
+            margin: 20px auto 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mode-description {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: white;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .mode-description strong {
+            color: #ffd700;
+        }
+
+        /* Afegir estils per la modalitat d'equips */
+        .team-battle-container {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+        }
+
+        .teams-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .team {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .team h3 {
+            text-align: center;
+            color: #1e3a8a;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .player1-team h3 {
+            color: #f59e0b;
+        }
+
+        .player2-team h3 {
+            color: #3b82f6;
+        }
+
+        .team-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .team-pokemon-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .team-pokemon-card.active {
+            border-color: #22c55e;
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .team-pokemon-card.defeated {
+            opacity: 0.4;
+            filter: grayscale(100%);
+        }
+
+        .team-pokemon-card .pokemon-mini-img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            background: white;
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .team-pokemon-card .pokemon-mini-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .team-pokemon-card .pokemon-mini-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-transform: capitalize;
+            color: #1e293b;
+        }
+
+        .team-pokemon-card .pokemon-mini-hp {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .team-pokemon-card .hp-bar-mini {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .team-pokemon-card .hp-fill-mini {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+            transition: width 0.5s ease;
+            border-radius: 3px;
+        }
+
+        .team-pokemon-card .hp-fill-mini.low {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .team-pokemon-card .hp-fill-mini.medium {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Añadido selector de modo de juego */
+        .game-mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid white;
+            border-radius: 8px;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .mode-btn.active {
+            background: white;
+            color: #1e3a8a;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .input {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            width: 100px;
+            text-align: center;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            background: #ffd700;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Afegir estils per als botons de gestió del marcador */
+        .score-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .score-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid white;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .score-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+
+        .score-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Filter Section */
+        .filter-section {
+            max-width: 400px;
+            margin: 0 auto 30px;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        /* Rediseñado completamente el apartado de batalla */
+        .battle-info {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 0 auto 30px;
+            max-width: 800px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s ease;
+        }
+
+        .battle-info h2 {
+            text-align: center;
+            color: #1e3a8a;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .battle-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .battle-pokemon {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+        }
+
+        .battle-pokemon.attacker {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .battle-pokemon.defender {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            flex-direction: row-reverse;
+        }
+
+        .pokemon-avatar {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        .pokemon-avatar img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+        }
+
+        .pokemon-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .pokemon-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pokemon-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: capitalize;
+            color: #1e293b;
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .hp-fill.low {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .hp-fill.medium {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .hp-text {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .attack-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .vs-separator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-radius: 50%;
+            color: white;
+            font-weight: 700;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+            flex-shrink: 0;
+        }
+
+        .turn-info {
+            text-align: center;
+            padding: 10px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* Battle Result */
+        .battle-result {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 40px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 0 auto 30px;
+            max-width: 500px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            animation: slideDown 0.3s ease;
+        }
+
+        .battle-result.winner {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+        }
+
+        .battle-result.draw {
+            background: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%);
+            color: #333;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Rediseñado completamente el marcador */
+        .score-board {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            margin: 0 auto 30px;
+            max-width: 700px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .score-board h3 {
+            text-align: center;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .scores {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            gap: 10px;
+        }
+
+        .score-item.first-player {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .score-item.second-player {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+
+        .score-item.draws {
+            background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+        }
+
+        .score-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .score-label {
+            color: #1e293b;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .score-subtitle {
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .score-value {
+            font-weight: 700;
+            font-size: 2.5rem;
+            color: #1e3a8a;
+        }
+
+        /* Cambiado grid para mostrar 5 cartas por fila */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        /* Rediseñadas completamente las cartas para un estilo más sofisticado */
+        .pokemon-card {
+            perspective: 1000px;
+            cursor: pointer;
+            height: 340px;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .pokemon-card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front,
+        .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            transform: rotateY(180deg);
+            border: 3px solid #e2e8f0;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pokeball {
+            width: 100px;
+            height: 100px;
+            background: white;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .pokeball::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: #1e293b;
+            border: 4px solid white;
+            border-radius: 50%;
+        }
+
+        .pokeball::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #1e293b;
+            transform: translateY(-50%);
+        }
+
+        .pokemon-card:hover .card-inner {
+            transform: translateY(-5px) scale(1.02);
+        }
+
+        .pokemon-card.selected .card-front {
+            border-color: #3b82f6;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(59, 130, 246, 0.9);
+            }
+        }
+
+        .pokemon-card.fainted {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .pokemon-card.fainted .card-front {
+            filter: grayscale(100%);
+        }
+
+        .pokemon-card.hidden-card {
+            display: none;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .pokemon-card h3 {
+            font-size: 1.3rem;
+            color: #1e293b;
+            text-transform: capitalize;
+            font-weight: 700;
+        }
+
+        .pokemon-hp {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #ef4444;
+            background: #fef2f2;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .card-image-container {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 140px;
+        }
+
+        .pokemon-card img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+        }
+
+        .pokemon-types {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .type-badge {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Pokemon Type Colors */
+        .type-grass {
+            background: #78c850;
+        }
+
+        .type-poison {
+            background: #a040a0;
+        }
+
+        .type-fire {
+            background: #f08030;
+        }
+
+        .type-water {
+            background: #6890f0;
+        }
+
+        .type-bug {
+            background: #a8b820;
+        }
+
+        .type-normal {
+            background: #a8a878;
+        }
+
+        .type-electric {
+            background: #f8d030;
+        }
+
+        .type-ground {
+            background: #e0c068;
+        }
+
+        .type-fairy {
+            background: #ee99ac;
+        }
+
+        .type-fighting {
+            background: #c03028;
+        }
+
+        .type-psychic {
+            background: #f85888;
+        }
+
+        .type-rock {
+            background: #b8a038;
+        }
+
+        .type-ghost {
+            background: #705898;
+        }
+
+        .type-ice {
+            background: #98d8d8;
+        }
+
+        .type-dragon {
+            background: #7038f8;
+        }
+
+        .type-dark {
+            background: #705848;
+        }
+
+        .type-steel {
+            background: #b8b8d0;
+        }
+
+        .type-flying {
+            background: #a890f0;
+        }
+
+        .pokemon-stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+            margin-top: auto;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-bottom: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #1e3a8a;
+            font-size: 1.2rem;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 20px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading p {
+            font-size: 1.2rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* PANEL LATERAL HISTORIAL */
+        .history-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 90vh;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.3);
+            overflow-y: auto;
+            z-index: 9999;
+        }
+
+        .history-panel h3 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1e3a8a;
+        }
+
+        .history-content div {
+            padding: 8px;
+            margin-bottom: 6px;
+            background: #eef2ff;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            border-left: 4px solid #3b82f6;
+            color: #0f172a;
+            word-wrap: break-word;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .history-panel {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            /* Ajustar descripcions en mòbil */
+            .mode-descriptions {
+                font-size: 0.85rem;
+            }
+
+            .battle-details {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .battle-pokemon {
+                width: 100%;
+            }
+
+            .vs-separator {
+                transform: rotate(90deg);
+            }
+
+            .scores {
+                grid-template-columns: 1fr;
+            }
+
+            /* Ajustado grid responsive para 5 cartas */
+            .cards-grid {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 20px;
+            }
+
+            .pokemon-card {
+                height: 300px;
+            }
+
+            /* Responsive per equips */
+            .teams-display {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .history-panel {
+                position: static;
+                width: auto;
+                height: auto;
+                margin-top: 20px;
+            }
+        }
+    </style>
+
+    <script>
+        const gameStates = {
+            turns: {
+                pokemons: [],
+                pokemonHP: [],
+                score: { firstWins: 0, secondWins: 0, draws: 0 },
+                selectedCards: [],
+                turnNumber: 1,
+            },
+            vsIA: {
+                pokemons: [],
+                pokemonHP: [],
+                score: { firstWins: 0, secondWins: 0, draws: 0 },
+                selectedCards: [],
+                turnNumber: 1,
+            },
+            team: {
+                pokemons: [],
+                pokemonHP: [],
+                score: { firstWins: 0, secondWins: 0, draws: 0 },
+                selectedCards: [],
+                turnNumber: 1,
+                player1Team: [],
+                player2Team: [],
+                player1HP: [],
+                player2HP: [],
+                currentPlayer1Index: 0,
+                currentPlayer2Index: 0,
+                battleStarted: false,
+            },
+        }
+
+        let gameMode = "turns"
+        let currentState = gameStates[gameMode]
+        const revealedPokemons = new Set() // Pokémons revelats per al cercador
+
+        // DOM Elements
+        const getPokemonsBtn = document.getElementById("getPokemons")
+        const pokemonCountInput = document.getElementById("pokemonCount")
+        const cardsContainer = document.getElementById("cardsContainer")
+        const battleResult = document.getElementById("battleResult")
+        const loading = document.getElementById("loading")
+        const battleInfo = document.getElementById("battleInfo")
+        const attackerName = document.getElementById("attackerName")
+        const attackerValue = document.getElementById("attackerValue")
+        const defenderName = document.getElementById("defenderName")
+        const defenderValue = document.getElementById("defenderValue")
+        const scoreBoard = document.getElementById("scoreBoard")
+        const firstWinsEl = document.getElementById("firstWins")
+        const secondWinsEl = document.getElementById("secondWins")
+        const drawsEl = document.getElementById("draws")
+        const filterInput = document.getElementById("filterInput")
+        const cardTemplate = document.getElementById("card-template")
+        const attackerImg = document.getElementById("attackerImg")
+        const defenderImg = document.getElementById("defenderImg")
+        const attackerHp = document.getElementById("attackerHp")
+        const defenderHp = document.getElementById("defenderHp")
+        const attackerHpBar = document.getElementById("attackerHpBar")
+        const defenderHpBar = document.getElementById("defenderHpBar")
+        const turnNumberEl = document.getElementById("turnNumber")
+        const modeBtns = document.querySelectorAll(".mode-btn")
+        const resetScoreBtn = document.getElementById("resetScore")
+        const saveScoreBtn = document.getElementById("saveScore")
+        const loadScoreBtn = document.getElementById("loadScore")
+
+        const teamBattleContainer = document.getElementById("teamBattle")
+        const player1CardsEl = document.getElementById("player1Cards")
+        const player2CardsEl = document.getElementById("player2Cards")
+        const startTeamBattleBtn = document.getElementById("startTeamBattle")
+        const descTurns = document.getElementById("desc-turns")
+        const descVsIA = document.getElementById("desc-vsIA")
+        const descTeam = document.getElementById("desc-team")
+
+        // History DOM
+        const historyContent = document.getElementById("historyContent")
+        const clearHistoryBtn = document.getElementById("clearHistoryBtn")
+        const historyModeLabel = document.getElementById("historyModeLabel")
+
+        // Event Listeners
+        getPokemonsBtn.addEventListener("click", fetchPokemons)
+        filterInput.addEventListener("input", filterPokemons)
+        resetScoreBtn.addEventListener("click", resetScoreOnly)
+        saveScoreBtn.addEventListener("click", saveScore)
+        loadScoreBtn.addEventListener("click", loadScore)
+
+        startTeamBattleBtn.addEventListener("click", startTeamBattle)
+        clearHistoryBtn.addEventListener("click", () => {
+            clearHistory(true) // manual clear with feedback
+        })
+
+        modeBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                modeBtns.forEach((b) => b.classList.remove("active"))
+                btn.classList.add("active")
+                gameMode = btn.dataset.mode
+                currentState = gameStates[gameMode]
+                updateModeDescription()
+                // Netejar historial en canviar de mode (opció combinada)
+                clearHistory(false) // clear but then add mode change entry
+                historyModeLabel.textContent = gameMode
+                switchMode()
+            })
+        })
+
+        function switchMode() {
+            resetSelection()
+            battleResult.classList.add("hidden")
+            battleInfo.classList.add("hidden")
+            teamBattleContainer.classList.add("hidden")
+
+            if (currentState.pokemons.length > 0) {
+                displayPokemons()
+                updateScoreBoard()
+                scoreBoard.classList.remove("hidden")
+            } else {
+                cardsContainer.innerHTML = ""
+                scoreBoard.classList.add("hidden")
+            }
+
+            updatePokemonCountLabel()
+        }
+
+        function updateModeDescription() {
+            descTurns.classList.add("hidden")
+            descVsIA.classList.add("hidden")
+            descTeam.classList.add("hidden")
+
+            if (gameMode === "turns") {
+                descTurns.classList.remove("hidden")
+            } else if (gameMode === "vsIA") {
+                descVsIA.classList.remove("hidden")
+            } else if (gameMode === "team") {
+                descTeam.classList.remove("hidden")
+            }
+        }
+
+        function updatePokemonCountLabel() {
+            const label = document.querySelector('label[for="pokemonCount"]')
+            if (gameMode === "team") {
+                label.textContent = "Pokémon per jugador:"
+            } else {
+                label.textContent = "Nombre de Pokémon:"
+            }
+        }
+
+        function filterPokemons() {
+            const searchTerm = filterInput.value.toLowerCase().trim()
+
+            document.querySelectorAll(".pokemon-card").forEach((card, index) => {
+                const pokemon = currentState.pokemons[index]
+                if (!pokemon) return
+
+                const cardIndex = Number.parseInt(card.dataset.index)
+                const isRevealed = revealedPokemons.has(`${gameMode}-${cardIndex}`)
+
+                if (!isRevealed) {
+                    return // No filtrar cartes no revelades
+                }
+
+                const name = pokemon.name.toLowerCase()
+                const types = pokemon.types.map((t) => t.type.name.toLowerCase())
+
+                const matchesSearch = name.includes(searchTerm) || types.some((type) => type.includes(searchTerm))
+
+                if (matchesSearch) {
+                    card.classList.remove("hidden-card")
+                } else {
+                    card.classList.add("hidden-card")
+                }
+            })
+        }
+
+        // -------------------------
+        // Historial helpers
+        // -------------------------
+        function addToHistory(text) {
+            // Mantén també console.log per rastreig (requisit del projecte)
+            console.log(`[${gameMode}]`, text)
+
+            const entry = document.createElement("div")
+            const time = new Date().toLocaleTimeString()
+            entry.textContent = `${time} — ${text}`
+            historyContent.appendChild(entry)
+            // auto-scroll
+            historyContent.scrollTop = historyContent.scrollHeight
+        }
+
+        /**
+         * clearHistory(manual)
+         * - manual = true -> anem a mostrar una entrada indicant que s'ha netejat manualment
+         * - manual = false -> neteja a causa del canvi de mode i afegeix una entrada de mode canviat
+         */
+        function clearHistory(manual = false) {
+            historyContent.innerHTML = ""
+            console.log("HISTORIAL: netejat (manual?:", manual, ")")
+            if (manual) {
+                // Donem feedback dins l'historial després de netejar
+                const info = document.createElement("div")
+                const time = new Date().toLocaleTimeString()
+                info.textContent = `${time} — Historial netejat manualment`
+                historyContent.appendChild(info)
+            } else {
+                const info = document.createElement("div")
+                const time = new Date().toLocaleTimeString()
+                info.textContent = `${time} — Mode canviat a ${gameMode} — Historial reiniciat`
+                historyContent.appendChild(info)
+            }
+            historyContent.scrollTop = historyContent.scrollHeight
+        }
+
+        // Inicialment actualitzem l'etiqueta de mode del historial
+        historyModeLabel.textContent = gameMode
+        addToHistory("Panel d'historial carregat (sempre visible).")
+
+        // -------------------------
+        // Fetch Pokemons
+        // -------------------------
+        async function fetchPokemons() {
+            const count = Number.parseInt(pokemonCountInput.value) || 10
+
+            loading.classList.remove("hidden")
+            cardsContainer.innerHTML = ""
+            battleResult.classList.add("hidden")
+            battleInfo.classList.add("hidden")
+            filterInput.value = ""
+            getPokemonsBtn.disabled = true
+            teamBattleContainer.classList.add("hidden")
+
+            // Reiniciar estat de la modalitat actual
+            currentState.selectedCards = []
+            currentState.pokemons = []
+            currentState.pokemonHP = []
+            currentState.turnNumber = 1
+
+            if (gameMode === "team") {
+                currentState.player1Team = []
+                currentState.player2Team = []
+                currentState.player1HP = []
+                currentState.player2HP = []
+                currentState.currentPlayer1Index = 0
+                currentState.currentPlayer2Index = 0
+                currentState.battleStarted = false
+            }
+
+            try {
+                const totalPokemons = gameMode === "team" ? count * 2 : count
+
+                const usedIds = new Set()
+                const randomIds = []
+
+                while (randomIds.length < totalPokemons) {
+                    const id = Math.floor(Math.random() * 898) + 1
+                    if (!usedIds.has(id)) {
+                        usedIds.add(id)
+                        randomIds.push(id)
+                    }
+                }
+
+                const promises = randomIds.map((id) => fetch(`https://pokeapi.co/api/v2/pokemon/${id}`).then((res) => res.json()))
+
+                currentState.pokemons = await Promise.all(promises)
+                currentState.pokemonHP = currentState.pokemons.map((p) => {
+                    const hp = p.stats.find((s) => s.stat.name === "hp")?.base_stat || 100
+                    return { current: hp, max: hp }
+                })
+
+                if (gameMode === "team") {
+                    const halfCount = count
+                    currentState.player1Team = currentState.pokemons.slice(0, halfCount)
+                    currentState.player2Team = currentState.pokemons.slice(halfCount)
+                    currentState.player1HP = currentState.pokemonHP.slice(0, halfCount)
+                    currentState.player2HP = currentState.pokemonHP.slice(halfCount)
+                    displayTeams()
+                } else {
+                    displayPokemons()
+                }
+
+                addToHistory(`S'han obtingut ${currentState.pokemons.length} pokémons per mode "${gameMode}".`)
+                console.log("fetchPokemons: obtinguts", currentState.pokemons.length, "pokémons")
+            } catch (error) {
+                console.error("Error en obtenir Pokémon:", error)
+                cardsContainer.innerHTML =
+                    '<p style="color: white; text-align: center;">Error en carregar Pokémon. Torna-ho a intentar.</p>'
+                addToHistory("Error en obtenir Pokémon. Revisa la consola.")
+            } finally {
+                loading.classList.add("hidden")
+                getPokemonsBtn.disabled = false
+            }
+        }
+
+        function displayTeams() {
+            teamBattleContainer.classList.remove("hidden")
+            player1CardsEl.innerHTML = ""
+            player2CardsEl.innerHTML = ""
+
+            currentState.player1Team.forEach((pokemon, index) => {
+                const card = createTeamPokemonCard(pokemon, index, currentState.player1HP[index])
+                player1CardsEl.appendChild(card)
+            })
+
+            currentState.player2Team.forEach((pokemon, index) => {
+                const card = createTeamPokemonCard(pokemon, index, currentState.player2HP[index])
+                player2CardsEl.appendChild(card)
+            })
+
+            startTeamBattleBtn.classList.remove("hidden")
+            scoreBoard.classList.remove("hidden")
+            updateScoreBoard()
+            addToHistory("Equips preparats per a batalla d'equips.")
+        }
+
+        function createTeamPokemonCard(pokemon, index, hp) {
+            const card = document.createElement("div")
+            card.className = "team-pokemon-card"
+            card.dataset.index = index
+
+            const img = document.createElement("img")
+            img.className = "pokemon-mini-img"
+            img.src = pokemon.sprites.front_default
+            img.alt = pokemon.name
+
+            const info = document.createElement("div")
+            info.className = "pokemon-mini-info"
+
+            const name = document.createElement("div")
+            name.className = "pokemon-mini-name"
+            name.textContent = pokemon.name
+
+            const hpText = document.createElement("div")
+            hpText.className = "pokemon-mini-hp"
+            hpText.textContent = `HP: ${hp.current} / ${hp.max}`
+
+            const hpBarContainer = document.createElement("div")
+            hpBarContainer.className = "hp-bar-mini"
+
+            const hpBar = document.createElement("div")
+            hpBar.className = "hp-fill-mini"
+            hpBar.style.width = "100%"
+
+            hpBarContainer.appendChild(hpBar)
+            info.appendChild(name)
+            info.appendChild(hpText)
+            info.appendChild(hpBarContainer)
+
+            card.appendChild(img)
+            card.appendChild(info)
+
+            return card
+        }
+
+        function startTeamBattle() {
+            if (currentState.battleStarted) return
+
+            currentState.battleStarted = true
+            startTeamBattleBtn.classList.add("hidden")
+            currentState.currentPlayer1Index = 0
+            currentState.currentPlayer2Index = 0
+            currentState.turnNumber = 1
+
+            highlightCurrentPokemons()
+            addToHistory("🛡️ Comença la batalla d’equips!")
+            setTimeout(() => executeTeamBattle(), 1000)
+        }
+
+        function highlightCurrentPokemons() {
+            document.querySelectorAll(".team-pokemon-card").forEach((card) => card.classList.remove("active"))
+
+            const p1Card = player1CardsEl.querySelector(`[data-index="${currentState.currentPlayer1Index}"]`)
+            const p2Card = player2CardsEl.querySelector(`[data-index="${currentState.currentPlayer2Index}"]`)
+
+            if (p1Card) p1Card.classList.add("active")
+            if (p2Card) p2Card.classList.add("active")
+        }
+
+        function executeTeamBattle() {
+            const p1Index = currentState.currentPlayer1Index
+            const p2Index = currentState.currentPlayer2Index
+
+            if (p1Index >= currentState.player1Team.length || p2Index >= currentState.player2Team.length) {
+                endTeamBattle()
+                return
+            }
+
+            const attacker = currentState.player1Team[p1Index]
+            const defender = currentState.player2Team[p2Index]
+
+            const attackerAttack = attacker.stats.find((s) => s.stat.name === "attack")?.base_stat || 0
+            const defenderDefense = defender.stats.find((s) => s.stat.name === "defense")?.base_stat || 0
+
+            const damage = Math.max(0, attackerAttack - defenderDefense)
+
+            currentState.player2HP[p2Index].current = Math.max(0, currentState.player2HP[p2Index].current - damage)
+
+            battleInfo.classList.remove("hidden")
+            attackerName.textContent = attacker.name
+            attackerValue.textContent = attackerAttack
+            attackerImg.src = attacker.sprites.front_default
+            defenderName.textContent = defender.name
+            defenderValue.textContent = defenderDefense
+            defenderImg.src = defender.sprites.front_default
+
+            const attackerHP = currentState.player1HP[p1Index]
+            const defenderHP = currentState.player2HP[p2Index]
+
+            attackerHp.textContent = `${attackerHP.current} / ${attackerHP.max}`
+            attackerHpBar.style.width = `${(attackerHP.current / attackerHP.max) * 100}%`
+
+            defenderHp.textContent = `${defenderHP.current} / ${defenderHP.max}`
+            const defenderPercentage = (defenderHP.current / defenderHP.max) * 100
+            defenderHpBar.style.width = `${defenderPercentage}%`
+
+            defenderHpBar.classList.remove("low", "medium")
+            if (defenderPercentage <= 20) defenderHpBar.classList.add("low")
+            else if (defenderPercentage <= 50) defenderHpBar.classList.add("medium")
+
+            turnNumberEl.textContent = `Turn ${currentState.turnNumber}`
+            addToHistory(`--- Torn ${currentState.turnNumber} (Equip) ---`)
+            addToHistory(`${attacker.name} fa ${damage} de dany a ${defender.name}!`)
+
+            battleResult.textContent = `${attacker.name} fa ${damage} de dany a ${defender.name}!`
+            battleResult.classList.remove("hidden", "winner", "draw")
+            battleResult.classList.add("winner")
+
+            updateTeamCard(p2Index, false)
+
+            if (defenderHP.current <= 0) {
+                battleResult.textContent = `${attacker.name} ha derrotat ${defender.name}!`
+                addToHistory(`${attacker.name} ha derrotat ${defender.name}!`)
+                console.log("TeamBattle: derrotat ->", defender.name)
+                markAsDefeated(p2Index, false)
+                currentState.currentPlayer2Index++
+                currentState.score.firstWins++
+                updateScoreBoard()
+
+                setTimeout(() => {
+                    if (currentState.currentPlayer2Index >= currentState.player2Team.length) {
+                        endTeamBattle()
+                    } else {
+                        highlightCurrentPokemons()
+                        currentState.turnNumber++
+                        setTimeout(() => executeTeamBattle(), 2000)
+                    }
+                }, 3000)
+            } else {
+                setTimeout(() => {
+                    executeTeamBattleReverse()
+                }, 3000)
+            }
+        }
+
+        function executeTeamBattleReverse() {
+            const p1Index = currentState.currentPlayer1Index
+            const p2Index = currentState.currentPlayer2Index
+
+            const attacker = currentState.player2Team[p2Index]
+            const defender = currentState.player1Team[p1Index]
+
+            const attackerAttack = attacker.stats.find((s) => s.stat.name === "attack")?.base_stat || 0
+            const defenderDefense = defender.stats.find((s) => s.stat.name === "defense")?.base_stat || 0
+
+            const damage = Math.max(0, attackerAttack - defenderDefense)
+
+            currentState.player1HP[p1Index].current = Math.max(0, currentState.player1HP[p1Index].current - damage)
+
+            attackerName.textContent = attacker.name
+            attackerValue.textContent = attackerAttack
+            attackerImg.src = attacker.sprites.front_default
+            defenderName.textContent = defender.name
+            defenderValue.textContent = defenderDefense
+            defenderImg.src = defender.sprites.front_default
+
+            const attackerHP = currentState.player2HP[p2Index]
+            const defenderHP = currentState.player1HP[p1Index]
+
+            attackerHp.textContent = `${attackerHP.current} / ${attackerHP.max}`
+            attackerHpBar.style.width = `${(attackerHP.current / attackerHP.max) * 100}%`
+
+            defenderHp.textContent = `${defenderHP.current} / ${defenderHP.max}`
+            const defenderPercentage = (defenderHP.current / defenderHP.max) * 100
+            defenderHpBar.style.width = `${defenderPercentage}%`
+
+            defenderHpBar.classList.remove("low", "medium")
+            if (defenderPercentage <= 20) defenderHpBar.classList.add("low")
+            else if (defenderPercentage <= 50) defenderHpBar.classList.add("medium")
+
+            currentState.turnNumber++
+            turnNumberEl.textContent = `Turn ${currentState.turnNumber}`
+            addToHistory(`--- Torn ${currentState.turnNumber} (Equip) ---`)
+            addToHistory(`${attacker.name} fa ${damage} de dany a ${defender.name}!`)
+
+            battleResult.textContent = `${attacker.name} fa ${damage} de dany a ${defender.name}!`
+
+            updateTeamCard(p1Index, true)
+
+            if (defenderHP.current <= 0) {
+                battleResult.textContent = `${attacker.name} ha derrotat ${defender.name}!`
+                addToHistory(`${attacker.name} ha derrotat ${defender.name}!`)
+                console.log("TeamBattleReverse: derrotat ->", defender.name)
+                markAsDefeated(p1Index, true)
+                currentState.currentPlayer1Index++
+                currentState.score.secondWins++
+                updateScoreBoard()
+
+                setTimeout(() => {
+                    if (currentState.currentPlayer1Index >= currentState.player1Team.length) {
+                        endTeamBattle()
+                    } else {
+                        highlightCurrentPokemons()
+                        currentState.turnNumber++
+                        setTimeout(() => executeTeamBattle(), 2000)
+                    }
+                }, 3000)
+            } else {
+                setTimeout(() => {
+                    currentState.turnNumber++
+                    executeTeamBattle()
+                }, 3000)
+            }
+        }
+
+        function updateTeamCard(index, isPlayer1) {
+            const container = isPlayer1 ? player1CardsEl : player2CardsEl
+            const hp = isPlayer1 ? currentState.player1HP[index] : currentState.player2HP[index]
+            const card = container.querySelector(`[data-index="${index}"]`)
+
+            if (!card) return
+
+            const hpText = card.querySelector(".pokemon-mini-hp")
+            const hpBar = card.querySelector(".hp-fill-mini")
+
+            hpText.textContent = `HP: ${hp.current} / ${hp.max}`
+            const percentage = (hp.current / hp.max) * 100
+            hpBar.style.width = `${percentage}%`
+
+            hpBar.classList.remove("low", "medium")
+            if (percentage <= 20) hpBar.classList.add("low")
+            else if (percentage <= 50) hpBar.classList.add("medium")
+        }
+
+        function markAsDefeated(index, isPlayer1) {
+            const container = isPlayer1 ? player1CardsEl : player2CardsEl
+            const card = container.querySelector(`[data-index="${index}"]`)
+            if (card) {
+                card.classList.add("defeated")
+                card.classList.remove("active")
+            }
+        }
+
+        function endTeamBattle() {
+            battleInfo.classList.add("hidden")
+
+            let winner = ""
+            if (currentState.currentPlayer2Index >= currentState.player2Team.length) {
+                winner = "Jugador 1 ha guanyat la batalla!"
+            } else if (currentState.currentPlayer1Index >= currentState.player1Team.length) {
+                winner = "Jugador 2 ha guanyat la batalla!"
+            }
+
+            battleResult.textContent = winner
+            battleResult.classList.add("winner")
+            addToHistory("🏆 " + winner)
+            console.log("endTeamBattle:", winner)
+
+            setTimeout(() => {
+                resetTeamBattle()
+            }, 5000)
+        }
+
+        function resetTeamBattle() {
+            currentState.battleStarted = false
+            currentState.currentPlayer1Index = 0
+            currentState.currentPlayer2Index = 0
+            currentState.turnNumber = 1
+
+            currentState.player1HP.forEach((hp) => (hp.current = hp.max))
+            currentState.player2HP.forEach((hp) => (hp.current = hp.max))
+
+            displayTeams()
+            battleResult.classList.add("hidden")
+            battleInfo.classList.add("hidden")
+            addToHistory("Batalla d'equips reiniciada.")
+        }
+
+        // -------------------------
+        // Lògica per a modalitats individuals (turns / vsIA)
+        // -------------------------
+        function displayPokemons() {
+            cardsContainer.innerHTML = ""
+
+            currentState.pokemons.forEach((pokemon, index) => {
+                const card = createPokemonCard(pokemon, index)
+                cardsContainer.appendChild(card)
+            })
+
+            scoreBoard.classList.remove("hidden")
+            updateScoreBoard()
+            addToHistory(`Mostrant ${currentState.pokemons.length} cartes (mode: ${gameMode}).`)
+        }
+
+        function createPokemonCard(pokemon, index) {
+            const cardClone = cardTemplate.content.cloneNode(true)
+            const card = cardClone.querySelector(".pokemon-card")
+
+            card.dataset.index = index
+
+            const attack = pokemon.stats.find((s) => s.stat.name === "attack")?.base_stat || 0
+            const defense = pokemon.stats.find((s) => s.stat.name === "defense")?.base_stat || 0
+            const speed = pokemon.stats.find((s) => s.stat.name === "speed")?.base_stat || 0
+            const hp = pokemon.stats.find((s) => s.stat.name === "hp")?.base_stat || 100
+
+            const types = pokemon.types.map((t) => t.type.name)
+
+            const img = card.querySelector(".pokemon-image")
+            img.src = pokemon.sprites.front_default
+            img.alt = pokemon.name
+
+            card.querySelector(".pokemon-name").textContent = pokemon.name
+            card.querySelector(".hp-value").textContent = hp
+
+            const typesContainer = card.querySelector(".pokemon-types")
+            typesContainer.innerHTML = types.map((type) => `<span class="type-badge type-${type}">${type}</span>`).join("")
+
+            card.querySelector(".stat-attack").textContent = attack
+            card.querySelector(".stat-defense").textContent = defense
+            card.querySelector(".stat-speed").textContent = speed
+
+            card.addEventListener("click", () => handleCardClick(index))
+
+            return cardClone
+        }
+
+        function handleCardClick(index) {
+            const card = document.querySelector(`[data-index="${index}"]`)
+
+            if (currentState.pokemonHP[index].current <= 0) return
+
+            const pokemon = currentState.pokemons[index]
+
+            // Revelar carta
+            if (!card.classList.contains("flipped")) {
+                revealedPokemons.add(`${gameMode}-${index}`)
+                addToHistory(`Revelat ${pokemon.name} (index ${index})`)
+                console.log("Revelat:", pokemon.name, "index:", index)
+            }
+
+            card.classList.toggle("flipped")
+
+            if (currentState.selectedCards.includes(index)) {
+                currentState.selectedCards = currentState.selectedCards.filter((i) => i !== index)
+                card.classList.remove("selected")
+                battleResult.classList.add("hidden")
+                battleInfo.classList.add("hidden")
+                addToHistory(`Deseleccionat ${pokemon.name}`)
+                return
+            }
+
+            if (currentState.selectedCards.length < 2) {
+                currentState.selectedCards.push(index)
+                card.classList.add("selected")
+                addToHistory(`Seleccionat ${pokemon.name}`)
+
+                if (gameMode === "vsIA" && currentState.selectedCards.length === 1) {
+                    setTimeout(() => {
+                        const availableCards = currentState.pokemons
+                            .map((_, i) => i)
+                            .filter((i) => i !== index && currentState.pokemonHP[i].current > 0)
+
+                        if (availableCards.length > 0) {
+                            const randomIndex = availableCards[Math.floor(Math.random() * availableCards.length)]
+                            const iaCard = document.querySelector(`[data-index="${randomIndex}"]`)
+                            revealedPokemons.add(`${gameMode}-${randomIndex}`)
+                            iaCard.classList.add("flipped")
+                            currentState.selectedCards.push(randomIndex)
+                            iaCard.classList.add("selected")
+                            addToHistory(`IA ha seleccionat ${currentState.pokemons[randomIndex].name}`)
+                            setTimeout(() => startBattle(), 500)
+                        }
+                    }, 500)
+                }
+
+                if (currentState.selectedCards.length === 2 && gameMode !== "vsIA") {
+                    setTimeout(() => startBattle(), 500)
+                }
+            }
+        }
+
+        function startBattle() {
+            const attackerIndex = currentState.selectedCards[0]
+            const defenderIndex = currentState.selectedCards[1]
+            const attacker = currentState.pokemons[attackerIndex]
+            const defender = currentState.pokemons[defenderIndex]
+
+            const attackerAttack = attacker.stats.find((s) => s.stat.name === "attack")?.base_stat || 0
+            const defenderDefense = defender.stats.find((s) => s.stat.name === "defense")?.base_stat || 0
+
+            const damage = Math.max(0, attackerAttack - defenderDefense)
+
+            currentState.pokemonHP[defenderIndex].current = Math.max(0, currentState.pokemonHP[defenderIndex].current - damage)
+
+            battleInfo.classList.remove("hidden")
+            attackerName.textContent = attacker.name
+            attackerValue.textContent = attackerAttack
+            attackerImg.src = attacker.sprites.front_default
+            defenderName.textContent = defender.name
+            defenderValue.textContent = defenderDefense
+            defenderImg.src = defender.sprites.front_default
+
+            updateHPBar(attackerIndex, attackerHp, attackerHpBar)
+            updateHPBar(defenderIndex, defenderHp, defenderHpBar)
+
+            turnNumberEl.textContent = `Turn ${currentState.turnNumber}`
+            addToHistory(`--- Torn ${currentState.turnNumber} ---`)
+
+            let result = ""
+
+            if (damage > 0) {
+                result = `${attacker.name} fa ${damage} de dany a ${defender.name}!`
+            } else {
+                result = `${defender.name} bloqueja l'atac!`
+            }
+
+            battleResult.textContent = result
+            battleResult.classList.remove("hidden", "winner", "draw")
+            battleResult.classList.add("winner")
+            addToHistory(result)
+
+            if (currentState.pokemonHP[defenderIndex].current <= 0) {
+                const defenderCard = document.querySelector(`[data-index="${defenderIndex}"]`)
+                defenderCard.classList.add("fainted")
+
+                currentState.score.firstWins++
+                updateScoreBoard()
+
+                const defeatText = `${attacker.name} ha derrotat ${defender.name}!`
+                battleResult.textContent = defeatText
+                addToHistory(defeatText)
+                console.log("startBattle: derrota ->", defeatText)
+
+                if (gameMode === "turns" || gameMode === "vsIA") {
+                    setTimeout(() => {
+                        resetSelection()
+                        currentState.turnNumber = 1
+                        addToHistory("Selecció i torn reiniciats després de derrota.")
+                    }, 3000)
+                }
+            } else {
+                currentState.turnNumber++
+                addToHistory(`Torn incrementat a ${currentState.turnNumber}`)
+
+                setTimeout(() => {
+                    if (gameMode === "turns") {
+                        currentState.selectedCards.reverse()
+                        startBattle()
+                    } else if (gameMode === "vsIA") {
+                        currentState.selectedCards.reverse()
+                        startBattle()
+                    }
+                }, 3000)
+            }
+        }
+
+        function updateHPBar(index, hpTextEl, hpBarEl) {
+            const hp = currentState.pokemonHP[index]
+            const percentage = (hp.current / hp.max) * 100
+
+            hpTextEl.textContent = `${hp.current} / ${hp.max}`
+            hpBarEl.style.width = `${percentage}%`
+
+            hpBarEl.classList.remove("low", "medium")
+            if (percentage <= 20) {
+                hpBarEl.classList.add("low")
+            } else if (percentage <= 50) {
+                hpBarEl.classList.add("medium")
+            }
+        }
+
+        function updateScoreBoard() {
+            firstWinsEl.textContent = currentState.score.firstWins
+            secondWinsEl.textContent = currentState.score.secondWins
+            drawsEl.textContent = currentState.score.draws
+        }
+
+        function resetSelection() {
+            currentState.selectedCards.forEach((index) => {
+                const card = document.querySelector(`[data-index="${index}"]`)
+                if (card) {
+                    card.classList.remove("selected")
+                }
+            })
+            currentState.selectedCards = []
+            battleResult.classList.add("hidden")
+            battleInfo.classList.add("hidden")
+        }
+
+        function resetGameFull() {
+            resetSelection()
+            currentState.turnNumber = 1
+
+            currentState.pokemonHP.forEach((hp, index) => {
+                hp.current = hp.max
+                const card = document.querySelector(`[data-index="${index}"]`)
+                if (card) {
+                    card.classList.remove("fainted")
+                }
+            })
+            addToHistory("Partida completament reiniciada.")
+        }
+
+        function resetScoreOnly() {
+            currentState.score = { firstWins: 0, secondWins: 0, draws: 0 }
+            updateScoreBoard()
+            addToHistory("Marcador reiniciat.")
+        }
+
+        function saveScore() {
+            localStorage.setItem(`pokemonScore_${gameMode}`, JSON.stringify(currentState.score))
+            alert("Marcador guardat!")
+            addToHistory("Marcador guardat al localStorage.")
+        }
+
+        function loadScore() {
+            const saved = localStorage.getItem(`pokemonScore_${gameMode}`)
+            if (saved) {
+                currentState.score = JSON.parse(saved)
+                updateScoreBoard()
+                alert("Marcador carregat!")
+                addToHistory("Marcador carregat des del localStorage.")
+            } else {
+                alert("No hi ha cap marcador guardat per aquesta modalitat.")
+                addToHistory("No s'ha trobat marcador guardat per a aquesta modalitat.")
+            }
+        }
+
+    </script>
+</body>
+
+</html>
